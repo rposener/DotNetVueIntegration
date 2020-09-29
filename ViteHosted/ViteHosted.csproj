@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Ryan Posener</Authors>
+    <Description></Description>
+    <Copyright>MIT License</Copyright>
+    <PackageProjectUrl>https://github.com/rposener/DotNetVueIntegration</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="5.0.0-rc.1.20451.17" />
+  </ItemGroup>
+
+</Project>
