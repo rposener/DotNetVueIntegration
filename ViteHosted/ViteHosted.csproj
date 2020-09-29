@@ -12,10 +12,21 @@
     <RepositoryUrl>https://github.com/rposener/DotNetVueIntegration</RepositoryUrl>
     <RepositoryType>GitHub</RepositoryType>
     <PackageTags>Vue.js Vue Vite ASPNET5 Asp.Net Core SPA</PackageTags>
+    <PackageLicenseExpression></PackageLicenseExpression>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="5.0.0-rc.1.20451.17" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
