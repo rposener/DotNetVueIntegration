@@ -4,9 +4,14 @@
     <TargetFramework>net5.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Ryan Posener</Authors>
-    <Description></Description>
-    <Copyright>MIT License</Copyright>
+    <Description>See Project URL for Details.</Description>
+    <Copyright>Ryan Posener</Copyright>
     <PackageProjectUrl>https://github.com/rposener/DotNetVueIntegration</PackageProjectUrl>
+    <PackageId>Vue.AspNetCore.ViteHosted</PackageId>
+    <Product>ViteHosted - Vue Integration for Asp.Net 5</Product>
+    <RepositoryUrl>https://github.com/rposener/DotNetVueIntegration</RepositoryUrl>
+    <RepositoryType>GitHub</RepositoryType>
+    <PackageTags>Vue.js Vue Vite ASPNET5 Asp.Net Core SPA</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
