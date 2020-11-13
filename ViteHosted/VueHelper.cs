@@ -141,5 +141,4 @@ namespace ViteHosted
             spa.UseProxyToSpaDevelopmentServer(devServerEndpoint);
         }
     }
-
 }
