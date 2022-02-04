@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace ViteHosted
@@ -30,6 +31,9 @@ namespace ViteHosted
             if (spa.Options.DevServerPort == 0)
                 spa.Options.DevServerPort = 3000;
 
+            if (string.IsNullOrWhiteSpace(spa.Options.SourcePath))
+                throw new ArgumentNullException("ISpaBuilder.Options.SourcePath", "Must specific Spa Client App path");
+
             var devServerEndpoint = new Uri($"https://localhost:{spa.Options.DevServerPort}");
             var loggerFactory = spa.ApplicationBuilder.ApplicationServices.GetService<ILoggerFactory>();
             var webHostEnvironment = spa.ApplicationBuilder.ApplicationServices.GetService<IWebHostEnvironment>();
@@ -46,11 +50,17 @@ namespace ViteHosted
                 var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
                 // export dev cert
-                var tempDir = webHostEnvironment.ContentRootPath;
-                var tempPfx = Path.Combine(tempDir, spa.Options.SourcePath, "devcert.pfx");
-                var tempConfig = Path.Combine(tempDir, spa.Options.SourcePath, "vite.config.js");
+                var spaFolder = Path.Combine(webHostEnvironment.ContentRootPath, spa.Options.SourcePath);
+                if (!Directory.Exists(spaFolder))
+                    throw new DirectoryNotFoundException(spaFolder);
 
-                if (!File.Exists(tempPfx) || !File.Exists(tempConfig))
+                var viteConfigPath = GetViteConfigFile(spaFolder);
+
+                var tempPfx = Path.Combine(spaFolder, "devcert.pfx");
+                var serverOptionFile = Path.Combine(spaFolder, $"serverOption{new FileInfo(viteConfigPath).Extension}");
+
+
+                if (!File.Exists(serverOptionFile) || !File.Exists(tempPfx))
                 {
                     var pfxPassword = Guid.NewGuid().ToString("N");
                     logger.LogInformation($"Exporting dotnet dev cert to {tempPfx} for Vite");
@@ -64,20 +74,19 @@ namespace ViteHosted
                         RedirectStandardOutput = true,
                         UseShellExecute = false,
                     };
+
                     var exportProcess = Process.Start(certExport);
                     exportProcess.WaitForExit();
                     if (exportProcess.ExitCode == 0)
-                    {
                         logger.LogInformation(exportProcess.StandardOutput.ReadToEnd());
-                    }
                     else
-                    {
                         logger.LogError(exportProcess.StandardError.ReadToEnd());
-                    }
 
-                    // create config
-                    File.WriteAllText(tempConfig, $"export default {{\r\nhttps:true,\r\nhttpsOptions: {{\r\npfx: '{Path.GetFileName(tempPfx)}',\r\npassphrase: '{pfxPassword}'\r\n}}\r\n}}");
-                    logger.LogInformation($"Creating Vite config: {tempConfig}");
+                    // Create serverOption file
+                    File.WriteAllText(serverOptionFile, BuildServerOption(tempPfx, pfxPassword));
+                    logger.LogInformation($"Creating Vite config: {serverOptionFile}");
+
+                    InjectionViteConfig(viteConfigPath, serverOptionFile);
                 }
 
                 // launch vue.js development server
@@ -93,6 +102,7 @@ namespace ViteHosted
                 };
                 var process = Process.Start(processInfo);
                 var tcs = new TaskCompletionSource<int>();
+
                 _ = Task.Run(() =>
                 {
                     try
@@ -116,6 +126,7 @@ namespace ViteHosted
                         tcs.SetException(new InvalidOperationException("'npm run dev' failed.", ex));
                     }
                 });
+
                 _ = Task.Run(() =>
                 {
                     try
@@ -139,6 +150,64 @@ namespace ViteHosted
                 }
             }
             spa.UseProxyToSpaDevelopmentServer(devServerEndpoint);
+        }
+
+        /// <summary>
+        /// Injection vite.config file to use serverOption file
+        /// </summary>
+        private static void InjectionViteConfig(string viteConfigPath, string serverOptionFile)
+        {
+            var optionFile = new FileInfo(serverOptionFile);
+            var serverOption = optionFile.Name[..^optionFile.Extension.Length];
+            var data = File.ReadAllLines(viteConfigPath).ToList();
+
+            // Already injection
+            if (data.Any(x => x.Contains($"./{serverOption}")))
+                return;
+
+            data.Insert(0, $"import serverOption from './{serverOption}'");
+
+            var exportDefaultLine = data.FindIndex(x => x.Contains("export default"));
+            if (exportDefaultLine == -1)
+                return;
+
+            data.Insert(exportDefaultLine + 1, "  server : serverOption,");
+
+            File.WriteAllLines(viteConfigPath, data);
+        }
+
+        /// <summary>
+        /// Get vite.config file Path (support .ts and .js)
+        /// </summary>
+        private static string GetViteConfigFile(string rootPath)
+        {
+            var configFile = Directory.GetFiles(rootPath)
+                                      .Where(x =>
+                                      {
+                                          var file = new FileInfo(x);
+                                          var fileName = file.Name[..^file.Extension.Length];
+                                          return fileName.Equals("vite.config",
+                                                                 StringComparison.OrdinalIgnoreCase);
+                                      })
+                                      .Single();
+
+            return configFile;
+        }
+
+        /// <summary>
+        /// Build Vite https server option
+        /// </summary>
+        private static string BuildServerOption(string certfile, string pass)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("import { ServerOptions } from 'vite'");
+            sb.AppendLine();
+            sb.AppendLine("export default {");
+            sb.AppendLine($"https: {{ pfx: '{Path.GetFileName(certfile)}', passphrase: '{pass}' }}");
+            sb.AppendLine("}");
+            sb.AppendLine();
+
+            return sb.ToString();
         }
     }
 
